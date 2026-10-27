@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Attachment Application Tracker</title>
+  <title>Attachment Application</title>
   <style>
     :root {
       color-scheme: light;
@@ -26,10 +26,14 @@
     header p { margin: 8px 0 0; color: #d7e8f4; }
     h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2rem); }
     h2 { margin: 0 0 18px; font-size: 1.15rem; }
+    .header-content { max-width: 1180px; margin: auto; }
+    .header-nav { margin-top: 16px; }
+    .header-nav a { color: white; font-weight: 650; }
 
     main {
       display: grid;
-      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      grid-template-columns: minmax(280px, 600px);
+      justify-content: center;
       gap: 22px;
       max-width: 1230px;
       margin: 26px auto;
@@ -105,8 +109,11 @@
 </head>
 <body>
   <header>
-    <h1>Attachment Application Tracker</h1>
-    <p>Collect student attachment applications and track review decisions.</p>
+    <div class="header-content">
+      <h1>Attachment Application</h1>
+      <p>Submit your details to apply for an attachment placement.</p>
+      <nav class="header-nav"><a href="/staff">Staff sign in</a></nav>
+    </div>
   </header>
 
   <main>
@@ -148,45 +155,16 @@
       </form>
     </section>
 
-    <section class="panel" aria-labelledby="applications-title">
-      <div class="toolbar">
-        <div>
-          <h2 id="applications-title">Applications</h2>
-          <p id="summary" class="summary">Loading applications...</p>
-        </div>
-        <button id="refresh-button" type="button">Refresh</button>
-      </div>
-      <p id="list-message" class="message" role="status" aria-live="polite"></p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Student</th>
-              <th scope="col">Placement details</th>
-              <th scope="col">Period</th>
-              <th scope="col">Review status</th>
-            </tr>
-          </thead>
-          <tbody id="application-rows"></tbody>
-        </table>
-        <p id="empty-state" class="empty" hidden>No applications submitted yet.</p>
-      </div>
-    </section>
   </main>
 
   <footer>
-    Local prototype: it has no sign-in or role-based access. Do not expose it to a public or shared network.
+    Student submissions are visible only to signed-in staff. Contact the organization directly to ask about your application.
   </footer>
 
   <script>
     const form = document.querySelector("#application-form");
     const submitButton = document.querySelector("#submit-button");
     const formMessage = document.querySelector("#form-message");
-    const listMessage = document.querySelector("#list-message");
-    const rows = document.querySelector("#application-rows");
-    const emptyState = document.querySelector("#empty-state");
-    const summary = document.querySelector("#summary");
-
     function showMessage(element, message, kind = "") {
       element.textContent = message;
       element.className = `message ${kind}`.trim();
@@ -204,72 +182,6 @@
       return result;
     }
 
-    function makeCell(primary, secondary) {
-      const cell = document.createElement("td");
-      cell.append(document.createTextNode(primary));
-      if (secondary) {
-        const detail = document.createElement("span");
-        detail.className = "subtle";
-        detail.textContent = secondary;
-        cell.append(detail);
-      }
-      return cell;
-    }
-
-    function renderApplications(applications) {
-      rows.replaceChildren();
-      emptyState.hidden = applications.length !== 0;
-      summary.textContent = `${applications.length} application${applications.length === 1 ? "" : "s"}`;
-
-      for (const application of applications) {
-        const row = document.createElement("tr");
-        row.append(makeCell(application.full_name, application.email));
-        row.append(makeCell(application.institution, application.course));
-        row.append(makeCell(application.start_date, `to ${application.end_date}`));
-
-        const statusCell = document.createElement("td");
-        const select = document.createElement("select");
-        select.className = "status-select";
-        select.setAttribute("aria-label", `Review status for ${application.full_name}`);
-        for (const status of ["pending", "approved", "rejected"]) {
-          const option = document.createElement("option");
-          option.value = status;
-          option.textContent = status[0].toUpperCase() + status.slice(1);
-          option.selected = status === application.status;
-          select.append(option);
-        }
-        select.addEventListener("change", async () => {
-          select.disabled = true;
-          try {
-            await request(`/api/applications/${application.id}/status`, {
-              method: "PATCH",
-              body: JSON.stringify({ status: select.value })
-            });
-            showMessage(listMessage, "Review status updated.", "success");
-          } catch (error) {
-            showMessage(listMessage, error.message, "error");
-            await loadApplications();
-          } finally {
-            select.disabled = false;
-          }
-        });
-        statusCell.append(select);
-        row.append(statusCell);
-        rows.append(row);
-      }
-    }
-
-    async function loadApplications() {
-      showMessage(listMessage, "");
-      summary.textContent = "Loading applications...";
-      try {
-        renderApplications(await request("/api/applications"));
-      } catch (error) {
-        summary.textContent = "Could not load applications.";
-        showMessage(listMessage, error.message, "error");
-      }
-    }
-
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       submitButton.disabled = true;
@@ -282,16 +194,12 @@
         });
         form.reset();
         showMessage(formMessage, "Application submitted.", "success");
-        await loadApplications();
       } catch (error) {
         showMessage(formMessage, error.message, "error");
       } finally {
         submitButton.disabled = false;
       }
     });
-
-    document.querySelector("#refresh-button").addEventListener("click", loadApplications);
-    loadApplications();
   </script>
 </body>
 </html>
