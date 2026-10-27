@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Portal | Attachment Applications</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: #172b4d;
+      background: #f3f6fb;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px max(20px, calc((100% - 1180px) / 2));
+      color: white;
+      background: linear-gradient(120deg, #12376a, #176b70);
+    }
+    h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 1.8rem); }
+    h2 { margin: 0 0 16px; font-size: 1.15rem; }
+    header p { margin: 5px 0 0; color: #d7e8f4; }
+    a { color: #145d68; }
+    header a { color: white; }
+    main { max-width: 1230px; margin: 24px auto; padding: 0 22px; }
+    .panel {
+      margin-bottom: 20px;
+      padding: 22px;
+      border: 1px solid #e0e7f0;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 5px 20px rgb(22 46 79 / 5%);
+    }
+    .auth-panel { max-width: 470px; margin: 48px auto; }
+    form { display: grid; gap: 13px; }
+    label { display: grid; gap: 6px; font-size: .88rem; font-weight: 600; }
+    input, select, button {
+      min-height: 41px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font: inherit;
+    }
+    input, select { width: 100%; padding: 8px 10px; background: white; }
+    button {
+      padding: 8px 14px;
+      border: 0;
+      color: white;
+      background: #145d68;
+      cursor: pointer;
+      font-weight: 650;
+    }
+    button:hover { background: #104c55; }
+    button:disabled { opacity: .6; cursor: wait; }
+    input:focus, select:focus, button:focus-visible {
+      outline: 3px solid #9cc9f2;
+      outline-offset: 1px;
+    }
+    .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .message { min-height: 1.2em; margin: 10px 0 0; font-size: .9rem; }
+    .message.error { color: #a12525; }
+    .message.success { color: #17613c; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .toolbar p { color: #52647a; }
+    .toolbar button { min-height: 36px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 11px 9px; border-bottom: 1px solid #e8edf3; vertical-align: top; }
+    th { color: #52647a; font-size: .77rem; letter-spacing: .04em; text-transform: uppercase; }
+    td { font-size: .89rem; }
+    .subtle { display: block; margin-top: 4px; color: #64748b; font-size: .82rem; }
+    .status-select { min-width: 112px; min-height: 36px; padding: 5px 8px; }
+    .empty { padding: 25px 8px; color: #64748b; text-align: center; }
+    .hint { color: #52647a; line-height: 1.5; }
+    [hidden] { display: none !important; }
+    @media (max-width: 600px) {
+      header { align-items: flex-start; padding: 18px; }
+      main { margin-top: 16px; padding: 0 12px; }
+      .panel { padding: 16px; }
+      .date-row { grid-template-columns: 1fr; }
+      .toolbar { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Staff portal</h1>
+      <p>Manage attachment applications</p>
+    </div>
+    <nav><a href="/">Student application form</a></nav>
+  </header>
+
+  <main>
+    <section id="loading" class="panel auth-panel">
+      <p>Checking staff access...</p>
+    </section>
+
+    <section id="setup-panel" class="panel auth-panel" hidden>
+      <h2>Set up the administrator account</h2>
+      <p class="hint">Create the first staff account. Keep its password private; it is required to view and manage applications.</p>
+      <form id="setup-form">
+        <label>Username
+          <input name="username" minlength="3" maxlength="48" autocomplete="username" required>
+        </label>
+        <label>Password (at least 12 characters)
+          <input name="password" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
+        </label>
+        <button type="submit">Create staff account</button>
+      </form>
+      <p id="setup-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="login-panel" class="panel auth-panel" hidden>
+      <h2>Staff sign in</h2>
+      <form id="login-form">
+        <label>Username
+          <input name="username" autocomplete="username" required>
+        </label>
+        <label>Password
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit">Sign in</button>
+      </form>
+      <p id="login-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <div id="dashboard" hidden>
+      <section class="panel">
+        <div class="toolbar">
+          <div>
+            <h2>Applications</h2>
+            <p id="staff-greeting"></p>
+          </div>
+          <button id="logout-button" type="button">Sign out</button>
+        </div>
+        <p id="list-message" class="message" role="status" aria-live="polite"></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Student</th>
+                <th scope="col">Placement</th>
+                <th scope="col">Period</th>
+                <th scope="col">Entered via</th>
+                <th scope="col">Review status</th>
+              </tr>
+            </thead>
+            <tbody id="application-rows"></tbody>
+          </table>
+          <p id="empty-state" class="empty" hidden>No applications submitted yet.</p>
+        </div>
+        <button id="refresh-button" type="button">Refresh applications</button>
+      </section>
+
+      <section class="panel">
+        <h2>Enter an application for a student</h2>
+        <form id="application-form">
+          <label>Student full name
+            <input name="full_name" autocomplete="name" maxlength="120" required>
+          </label>
+          <label>Email address
+            <input name="email" type="email" autocomplete="email" maxlength="254" required>
+          </label>
+          <label>Phone number
+            <input name="phone" type="tel" autocomplete="tel" maxlength="40" required>
+          </label>
+          <label>Institution
+            <input name="institution" maxlength="160" required>
+          </label>
+          <label>Course or area of study
+            <input name="course" maxlength="160" required>
+          </label>
+          <div class="date-row">
+            <label>Start date
+              <input name="start_date" type="date" required>
+            </label>
+            <label>End date
+              <input name="end_date" type="date" required>
+            </label>
+          </div>
+          <button id="submit-button" type="submit">Save application</button>
+        </form>
+        <p id="form-message" class="message" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const loading = document.querySelector("#loading");
+    const setupPanel = document.querySelector("#setup-panel");
+    const loginPanel = document.querySelector("#login-panel");
+    const dashboard = document.querySelector("#dashboard");
+    const rows = document.querySelector("#application-rows");
+    const emptyState = document.querySelector("#empty-state");
+    const listMessage = document.querySelector("#list-message");
+
+    function showMessage(element, message, kind = "") {
+      element.textContent = message;
+      element.className = `message ${kind}`.trim();
+    }
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...options.headers }
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The request failed.");
+      return result;
+    }
+
+    function showView(name) {
+      loading.hidden = name !== "loading";
+      setupPanel.hidden = name !== "setup";
+      loginPanel.hidden = name !== "login";
+      dashboard.hidden = name !== "dashboard";
+    }
+
+    function makeCell(primary, secondary) {
+      const cell = document.createElement("td");
+      cell.append(document.createTextNode(primary || ""));
+      if (secondary) {
+        const detail = document.createElement("span");
+        detail.className = "subtle";
+        detail.textContent = secondary;
+        cell.append(detail);
+      }
+      return cell;
+    }
+
+    async function loadApplications() {
+      showMessage(listMessage, "");
+      try {
+        const applications = await request("/api/applications");
+        rows.replaceChildren();
+        emptyState.hidden = applications.length !== 0;
+        for (const application of applications) {
+          const row = document.createElement("tr");
+          row.append(makeCell(application.full_name, application.email));
+          row.append(makeCell(application.institution, `${application.course} · ${application.phone}`));
+          row.append(makeCell(application.start_date, `to ${application.end_date}`));
+          row.append(makeCell(application.entry_type === "staff" ? "Staff entry" : "Student form"));
+
+          const statusCell = document.createElement("td");
+          const select = document.createElement("select");
+          select.className = "status-select";
+          select.setAttribute("aria-label", `Review status for ${application.full_name}`);
+          for (const status of ["pending", "approved", "rejected"]) {
+            const option = document.createElement("option");
+            option.value = status;
+            option.textContent = status[0].toUpperCase() + status.slice(1);
+            option.selected = status === application.status;
+            select.append(option);
+          }
+          select.addEventListener("change", async () => {
+            select.disabled = true;
+            try {
+              await request(`/api/applications/${application.id}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({ status: select.value })
+              });
+              showMessage(listMessage, "Review status updated.", "success");
+            } catch (error) {
+              showMessage(listMessage, error.message, "error");
+              await loadApplications();
+            } finally {
+              select.disabled = false;
+            }
+          });
+          statusCell.append(select);
+          row.append(statusCell);
+          rows.append(row);
+        }
+      } catch (error) {
+        if (error.message === "Staff sign-in required.") {
+          await initializeStaffPage();
+        } else {
+          showMessage(listMessage, error.message, "error");
+        }
+      }
+    }
+
+    async function initializeStaffPage() {
+      showView("loading");
+      try {
+        const status = await request("/api/auth/status");
+        if (status.authenticated) {
+          showView("dashboard");
+          document.querySelector("#staff-greeting").textContent = `Signed in as ${status.username}`;
+          await loadApplications();
+        } else if (status.setup_required) {
+          showView("setup");
+        } else {
+          showView("login");
+        }
+      } catch (error) {
+        showView("login");
+        showMessage(document.querySelector("#login-message"), error.message, "error");
+      }
+    }
+
+    for (const [formId, endpoint, messageId] of [
+      ["setup-form", "/api/auth/setup", "setup-message"],
+      ["login-form", "/api/auth/login", "login-message"]
+    ]) {
+      document.querySelector(`#${formId}`).addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const submit = form.querySelector("button[type=submit]");
+        submit.disabled = true;
+        try {
+          await request(endpoint, {
+            method: "POST",
+            body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
+          });
+          form.reset();
+          await initializeStaffPage();
+        } catch (error) {
+          showMessage(document.querySelector(`#${messageId}`), error.message, "error");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+    }
+
+    document.querySelector("#application-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submit = document.querySelector("#submit-button");
+      submit.disabled = true;
+      showMessage(document.querySelector("#form-message"), "Saving...");
+      try {
+        await request("/api/applications", {
+          method: "POST",
+          body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
+        });
+        form.reset();
+        showMessage(document.querySelector("#form-message"), "Application saved as a staff entry.", "success");
+        await loadApplications();
+      } catch (error) {
+        showMessage(document.querySelector("#form-message"), error.message, "error");
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    document.querySelector("#logout-button").addEventListener("click", async () => {
+      try {
+        await request("/api/auth/logout", { method: "POST", body: "{}" });
+        await initializeStaffPage();
+      } catch (error) {
+        showMessage(listMessage, error.message, "error");
+      }
+    });
+
+    document.querySelector("#refresh-button").addEventListener("click", loadApplications);
+    initializeStaffPage();
+  </script>
+</body>
+</html>
